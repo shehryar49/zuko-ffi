@@ -11,7 +11,7 @@ Created by Shahryar Ahmad (MIT License)
 
 using namespace  std;
 
-PltObject nil;
+ZObject nil;
 enum ctypes
 {
  C_INT=0,
@@ -70,77 +70,77 @@ void* retAddr[] = {
 };
 
 Klass* libklass;
-PltObject init()
+ZObject init()
 {
-    nil.type = PLT_NIL;
+    nil.type = Z_NIL;
     Module* ffiModule = vm_allocModule();
     ffiModule->name = "ffi";
     ffiModule->addNativeFunction("loadLibrary",&LOAD_LIB);
-    ffiModule->members.emplace("C_INT",PObjFromInt(C_INT));
-    ffiModule->members.emplace("C_CHAR",PObjFromInt(C_CHAR));
-    ffiModule->members.emplace("C_LONG",PObjFromInt(C_LONG));
-    ffiModule->members.emplace("C_LLONG",PObjFromInt(C_LLONG));
-    ffiModule->members.emplace("C_DOUBLE",PObjFromInt(C_DOUBLE));
-    ffiModule->members.emplace("C_FLOAT",PObjFromInt(C_FLOAT));
-    ffiModule->members.emplace("C_SHORT",PObjFromInt(C_SHORT));
-    ffiModule->members.emplace("C_SIZET",PObjFromInt(C_SIZET));
-    ffiModule->members.emplace("C_STR",PObjFromInt(C_STR));
-    ffiModule->members.emplace("C_BOOL",PObjFromInt(C_BOOL));
-    ffiModule->members.emplace("C_PTR",PObjFromInt(C_PTR));
-    ffiModule->members.emplace("C_VOID",PObjFromInt(C_VOID));
+    ffiModule->members.emplace("C_INT",ZObjFromInt(C_INT));
+    ffiModule->members.emplace("C_CHAR",ZObjFromInt(C_CHAR));
+    ffiModule->members.emplace("C_LONG",ZObjFromInt(C_LONG));
+    ffiModule->members.emplace("C_LLONG",ZObjFromInt(C_LLONG));
+    ffiModule->members.emplace("C_DOUBLE",ZObjFromInt(C_DOUBLE));
+    ffiModule->members.emplace("C_FLOAT",ZObjFromInt(C_FLOAT));
+    ffiModule->members.emplace("C_SHORT",ZObjFromInt(C_SHORT));
+    ffiModule->members.emplace("C_SIZET",ZObjFromInt(C_SIZET));
+    ffiModule->members.emplace("C_STR",ZObjFromInt(C_STR));
+    ffiModule->members.emplace("C_BOOL",ZObjFromInt(C_BOOL));
+    ffiModule->members.emplace("C_PTR",ZObjFromInt(C_PTR));
+    ffiModule->members.emplace("C_VOID",ZObjFromInt(C_VOID));
     
     //
     //Library class
     libklass = vm_allocKlass();
-    libklass->members.emplace("call",PObjFromMethod("call",&LIB_CALL,libklass));
+    libklass->members.emplace("call",ZObjFromMethod("call",&LIB_CALL,libklass));
     vm_markImportant((void*)libklass);
-    return PObjFromModule(ffiModule);
+    return ZObjFromModule(ffiModule);
 }
-PltObject LOAD_LIB(PltObject* args,int32_t n)
+ZObject LOAD_LIB(ZObject* args,int32_t n)
 {
   if(n!=1)
-    return Plt_Err(ArgumentError,"1 argument required!");
-  if(args[0].type != PLT_STR)
-    return Plt_Err(TypeError,"String argument required!");
+    return Z_Err(ArgumentError,"1 argument required!");
+  if(args[0].type != Z_STR)
+    return Z_Err(TypeError,"String argument required!");
   const string& path = AS_STR(args[0]);
   #ifdef _WIN32
     HINSTANCE handle = LoadLibrary(path.c_str());
     if(!handle)
     {
-      return Plt_Err(Error,"Unable to load library: "+to_string(GetLastError()));
+      return Z_Err(Error,"Unable to load library: "+to_string(GetLastError()));
     }
   #else
     void* handle = dlopen(path.c_str(),RTLD_LAZY);
     if(!handle)
     {
-      return Plt_Err(Error,"Unable to load library: "+(string)dlerror());
+      return Z_Err(Error,"Unable to load library: "+(string)dlerror());
     }
   #endif
   
   KlassObject* obj = vm_allocKlassObject();
   obj->klass = libklass;
   obj->members = libklass->members;
-  obj->members.emplace(".libhandle",PObjFromPtr(handle));
-  return PObjFromKlassObj(obj);
+  obj->members.emplace(".libhandle",ZObjFromPtr(handle));
+  return ZObjFromKlassObj(obj);
 }
 
 //Libklass methods
-PltObject LIB_CALL(PltObject* args,int32_t n)
+ZObject LIB_CALL(ZObject* args,int32_t n)
 {
     if(n < 3)
-      return Plt_Err(ArgumentError,"call(self,name,argTypes,...) takes atleast 3 arguments");
-    if(args[0].type != PLT_OBJ || ((KlassObject*)args[0].ptr) -> klass!=libklass)
-      return Plt_Err(TypeError,"First argument must be an object of library class.");
-    if(args[1].type != PLT_STR)
-      return Plt_Err(TypeError,"Second argument must be a string!");
-    if(args[2].type != PLT_LIST)
-      return Plt_Err(TypeError,"Third argument must be a list!");
-    const PltList& argTypes = *(PltList*)args[2].ptr;
+      return Z_Err(ArgumentError,"call(self,name,argTypes,...) takes atleast 3 arguments");
+    if(args[0].type != Z_OBJ || ((KlassObject*)args[0].ptr) -> klass!=libklass)
+      return Z_Err(TypeError,"First argument must be an object of library class.");
+    if(args[1].type != Z_STR)
+      return Z_Err(TypeError,"Second argument must be a string!");
+    if(args[2].type != Z_LIST)
+      return Z_Err(TypeError,"Third argument must be a list!");
+    const ZList& argTypes = *(ZList*)args[2].ptr;
     const string& name = AS_STR(args[1]);
     KlassObject& obj = *((KlassObject*)args[0].ptr);
     static string tmp;
     tmp = "."+name;
-    std::unordered_map<string,PltObject>::iterator it;
+    std::unordered_map<string,ZObject>::iterator it;
     void* thefunc = NULL;
     if((it = obj.members.find(tmp)) == obj.members.end())
     {
@@ -153,8 +153,8 @@ PltObject LIB_CALL(PltObject* args,int32_t n)
         #endif
 
         if(!fn)
-          return Plt_Err(NameError,"Unable to load function from library!");
-        obj.members.emplace(tmp,PObjFromPtr(fn));
+          return Z_Err(NameError,"Unable to load function from library!");
+        obj.members.emplace(tmp,ZObjFromPtr(fn));
         thefunc = fn;
     }
     else
@@ -164,7 +164,7 @@ PltObject LIB_CALL(PltObject* args,int32_t n)
 
     //libffi magic
     if(argTypes.size() < 1)
-      return Plt_Err(ValueError,"List must be at least of size 1");
+      return Z_Err(ValueError,"List must be at least of size 1");
     ffi_type** ffiargs = new ffi_type*[argTypes.size()-1];
     size_t l = argTypes.size()-1;
 
@@ -181,29 +181,29 @@ PltObject LIB_CALL(PltObject* args,int32_t n)
       {
         case C_INT:
         {
-            if(args[j].type != PLT_INT)
-              return Plt_Err(TypeError,"Argument "+to_string(j)+" is not an integer!");
+            if(args[j].type != Z_INT)
+              return Z_Err(TypeError,"Argument "+to_string(j)+" is not an integer!");
             values[i] = (void*)&(args[j].i);
             break;
         }
         case C_LLONG:
         {
-            if(args[j].type != PLT_INT64)
-              return Plt_Err(TypeError,"Argument "+to_string(j)+" is not an integer 64 bit!");
+            if(args[j].type != Z_INT64)
+              return Z_Err(TypeError,"Argument "+to_string(j)+" is not an integer 64 bit!");
             values[i] = (void*)&(args[j].i);
             break;
         }
         case C_DOUBLE:
         {
-          if(args[j].type != PLT_FLOAT)
-            return Plt_Err(TypeError,"Argument "+to_string(j)+" is not plutonium float!");
+          if(args[j].type != Z_FLOAT)
+            return Z_Err(TypeError,"Argument "+to_string(j)+" is not plutonium float!");
           values[i] = (void*)&(args[j].f);
           break;
         }
         case C_STR:
         {
-          if(args[j].type != PLT_STR)
-            return Plt_Err(TypeError,"Argument "+to_string(j)+" is not a string!");
+          if(args[j].type != Z_STR)
+            return Z_Err(TypeError,"Argument "+to_string(j)+" is not a string!");
           ptrs.push_back((void*)((string*)args[j].ptr)->c_str());
           values[i] = (void*)&ptrs.back();
           char* str = (char*)(*((void**)values[i]));
@@ -211,13 +211,13 @@ PltObject LIB_CALL(PltObject* args,int32_t n)
         }
         case C_VOID:
         {
-            return Plt_Err(Error,"C_VOID type must not be used as argument type!");
+            return Z_Err(Error,"C_VOID type must not be used as argument type!");
             break;
         }
         
         default:
         {
-            return Plt_Err(Error,"Unknown type specified in list!");
+            return Z_Err(Error,"Unknown type specified in list!");
             break;
         }
       }
@@ -227,7 +227,7 @@ PltObject LIB_CALL(PltObject* args,int32_t n)
     ffi_cif cif;
     ffi_status status = ffi_prep_cif(&cif,FFI_DEFAULT_ABI,l,ret_type,ffiargs);
     if(status != FFI_OK)
-        return Plt_Err(Error,"ffi_prep_cif() failed.");
+        return Z_Err(Error,"ffi_prep_cif() failed.");
     
     ffi_call(&cif,FFI_FN(thefunc),(void*)retAddr[argTypes[0].i],values);
     delete[] values;
@@ -235,27 +235,27 @@ PltObject LIB_CALL(PltObject* args,int32_t n)
     switch(argTypes[0].i)
     {
       case C_CHAR:
-        return PObjFromInt(iret);
+        return ZObjFromInt(iret);
       case C_SHORT:
-        return PObjFromInt(iret);
+        return ZObjFromInt(iret);
       case C_BOOL:
-        return PObjFromInt(iret);
+        return ZObjFromInt(iret);
       case C_INT:
-        return PObjFromInt(iret);
+        return ZObjFromInt(iret);
       case C_LLONG:
-        return PObjFromInt64(i64ret);
+        return ZObjFromInt64(i64ret);
       case C_SIZET:
-        return PObjFromInt64(sztret);
+        return ZObjFromInt64(sztret);
       case C_LONG:
-        return PObjFromInt64(i64ret);
+        return ZObjFromInt64(i64ret);
       case C_FLOAT:
-        return PObjFromDouble(fret);
+        return ZObjFromDouble(fret);
       case C_DOUBLE:
-        return PObjFromDouble(dret);
+        return ZObjFromDouble(dret);
       case C_STR:
-        return PObjFromStr((string)strret);
+        return ZObjFromStr((string)strret);
       case C_PTR:
-        return PObjFromPtr(pret);   
+        return ZObjFromPtr(pret);   
     }
     return nil;
 }

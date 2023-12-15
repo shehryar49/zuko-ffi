@@ -1,6 +1,6 @@
 import ffi
 
-var lib = ffi.loadLibrary("/home/shahryar/ffi/demo.so")
+var lib = ffi.loadLibrary("./demo.so")
 
 var k = lib.call("sum",[ffi.C_INT,ffi.C_INT,ffi.C_INT],8,5)
 println(k)

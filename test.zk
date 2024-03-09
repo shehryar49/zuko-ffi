@@ -1,0 +1,25 @@
+import ffi
+
+var lib = ffi.loadLibrary("./demo.so")
+
+#-var sum = lib.call("sum",[ffi.C_INT,ffi.C_INT,ffi.C_INT],3,5)
+
+println(sum)
+
+lib.call("MYPUTS",[ffi.C_VOID,ffi.C_STR],"it works!")
+
+lib.call("sayhello",[ffi.C_VOID])
+
+sum = lib.call("doubleSum",[ffi.C_DOUBLE,ffi.C_DOUBLE,ffi.C_DOUBLE],30.0,40.0)
+
+println(sum)
+-#
+var str1 = lib.call("getStr",[ffi.C_STR])
+var str2 = lib.call("getStr",[ffi.C_PTR])
+println(str1)
+#println(typeof(str2))
+
+lib.call("MYPUTS",[ffi.C_VOID,ffi.C_PTR],str2)
+
+lib.call("printPointer",[ffi.C_VOID,ffi.C_STR],str2)
+#lib.call("printPointer",[ffi.C_VOID,ffi.C_PTR],str2)

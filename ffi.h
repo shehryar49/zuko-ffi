@@ -1,11 +1,11 @@
 #ifdef _WIN32
   #include <windows.h>
-  #include "C:\\zuko\\ZObject.h"
+  #include "C:\\zuko\\include\\zapi.h"
   #define EXPORT __declspec(dllexport)
 #else
   #include <unistd.h>
   #include <dlfcn.h>
-  #include "/opt/zuko/ZObject.h"
+  #include "/opt/zuko/include/zapi.h"
   #define EXPORT
 #endif
 

@@ -2,24 +2,18 @@ import ffi
 
 var lib = ffi.loadLibrary("./demo.so")
 
-#-var sum = lib.call("sum",[ffi.C_INT,ffi.C_INT,ffi.C_INT],3,5)
+lib.call("test_void",[ffi.C_VOID])
 
-println(sum)
+println(lib.call("test_int",[ffi.C_INT]*3,10,20)) # prints 30
+println(lib.call("test_long",[ffi.C_LONG]*3,10,20)) # prints 200
+println(lib.call("test_float",[ffi.C_FLOAT]*3,10.0,20.0)) # prints 0.5
+println(lib.call("test_double",[ffi.C_DOUBLE]*3,10.0,20.0)) # prints 200.0
+println(lib.call("test_int64",[ffi.C_LLONG]*3,int64(10),int64(20))) # prints 200
+println(lib.call("test_bool",[ffi.C_BOOL]*3,true,false)) # prints true
+println(lib.call("test_char",[ffi.C_CHAR]*3,0x01,0x02)) # prints 0x03
+var addr = lib.call("getAddr",[ffi.C_PTR])
+lib.call("test_ptr",[ffi.C_PTR]*2,addr)
+println(lib.call("test_str",[ffi.C_STR]*2,"Nafees is gay") is "Nafees is gay") # prints false
+# btw Nafees is gay 
+# the false printed above means strings are not pointing to same memory as expected
 
-lib.call("MYPUTS",[ffi.C_VOID,ffi.C_STR],"it works!")
-
-lib.call("sayhello",[ffi.C_VOID])
-
-sum = lib.call("doubleSum",[ffi.C_DOUBLE,ffi.C_DOUBLE,ffi.C_DOUBLE],30.0,40.0)
-
-println(sum)
--#
-var str1 = lib.call("getStr",[ffi.C_STR])
-var str2 = lib.call("getStr",[ffi.C_PTR])
-println(str1)
-#println(typeof(str2))
-
-lib.call("MYPUTS",[ffi.C_VOID,ffi.C_PTR],str2)
-
-lib.call("printPointer",[ffi.C_VOID,ffi.C_STR],str2)
-#lib.call("printPointer",[ffi.C_VOID,ffi.C_PTR],str2)

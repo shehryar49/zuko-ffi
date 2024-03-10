@@ -1,31 +1,69 @@
 #include <stdio.h>
 #include <stdlib.h>
-
-int sum(int x,int y)
+#include <stdbool.h>
+//Test void
+void test_void()
 {
+    puts("--test_void()--");
+}
+//Test int
+int test_int(int x,int y)
+{
+    puts("--test_int()--");
     return x+y;
 }
-void sayhello()
+//Test long
+long test_long(long x,long y)
 {
-    puts("hello!");
-    fflush(stdout);
+    puts("--test_long()--");
+    return x*y;
 }
-double doubleSum(double x,double y)
+//Test float
+float test_float(float x,float y)
 {
+    puts("--test_float()--");
+    return x/y;
+}
+//Test double
+double test_double(double x,double y)
+{
+    puts("--test_double()--");
+    return x*y;
+}
+//Test int64
+long long int test_int64(long long int x,long long int y)
+{
+    puts("--test_int64()--");
+    return x*y;
+}
+//Test bool
+bool test_bool(bool x,bool y)
+{
+    puts("--test_bool()--");
+    return x^y;
+}
+//Test char
+char test_char(char x,char y)
+{
+    puts("--test_char()--");
     return x+y;
 }
-void MYPUTS(const char* str)
+//Test Ptr
+int* getAddr()
 {
+    static int x = 69;
+    return &x;
+}
+int* test_ptr(int* x)
+{
+    puts("--test_ptr()--");
+    printf("x = %d\n",*x);
+    return x;
+}
+//Test C_STR
+char* test_str(char* str)
+{
+    puts("--test_str()--");
     puts(str);
-}
-
-char* getStr()
-{
-    static char buffer[] = "hello from C!";
-    return buffer; // the ffi module should deepcopy if return type is C_STR
-    //deepcopy is not done for C_PTR
-}
-void printPointer(void* p)
-{
-  printf("ptr = %p\n",p);
+    return str; // the ffi module will make deep copy of this
 }

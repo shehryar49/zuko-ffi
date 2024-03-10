@@ -4,16 +4,20 @@ Uses libffi and currently supports primitive types only
 Created by Shahryar Ahmad (MIT License)
 */
 
+#include <cstring>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ffi.h> //libffi
 #include "ffi.h"
 #include <vector>
 #include <string>
+#include <cassert>
 using namespace  std;
 
+
 ZObject nil;
-enum ctypes
+enum Types
 {
  C_INT=0,
  C_CHAR=1,
@@ -43,36 +47,12 @@ ffi_type* ffi_types[] =
     &ffi_type_pointer,
     &ffi_type_void
 };
-int iret;
-char cret;
-long lret;
-int64_t i64ret;
-double dret;
-float fret;
-short sret;
-size_t sztret;
-char* strret;
-char bret;//for boolean
-void* pret;
 
-void* retAddr[] = {
-  &iret,
-  &cret,
-  &lret,
-  &i64ret,
-  &dret,
-  &fret,
-  &sret,
-  &sztret,
-  &strret,
-  &bret,
-  &pret,
-  NULL
-};
 
 Klass* libklass;
 ZObject init()
 {
+
     nil.type = Z_NIL;
     Module* ffiModule = vm_allocModule();
     ffiModule->name = "ffi";
@@ -97,7 +77,7 @@ ZObject init()
     libklass = vm_allocKlass();
     Klass_addNativeMethod(libklass,"call",&LIB_CALL);
     vm_markImportant((void*)libklass);
-
+    
     return ZObjFromModule(ffiModule);
 }
 ZObject LOAD_LIB(ZObject* args,int32_t n)
@@ -137,12 +117,43 @@ ZObject LIB_CALL(ZObject* args,int32_t n)
     if(args[2].type != Z_LIST)
       return Z_Err(TypeError,"Third argument must be a list!");
 
+    //Variables to store return value when function is called
+    int iret;
+    char cret;
+    long lret;
+    int64_t i64ret;
+    double dret;
+    float fret;
+    short sret;
+    size_t sztret;
+    char* strret;
+    char bret;//for boolean
+    void* pret;
+    //Addresses of return variables
+    //this has 1 to 1 mapping with enum Types 
+    void* retAddr[] = {
+      &iret,
+      &cret,
+      &lret,
+      &i64ret,
+      &dret,
+      &fret,
+      &sret,
+      &sztret,
+      &strret,
+      &bret,
+      &pret,
+      NULL
+    };
+    if(sizeof(long) == 8)
+      retAddr[2] = &i64ret;
     
     const ZList& argTypes = *AS_LIST(args[2]);
     const char* name = AS_STR(args[1])->val;
     KlassObject& obj = *((KlassObject*)args[0].ptr);
     static string tmp;
     tmp = "."+(string)name;
+
     ZObject* p = StrMap_getRef(&(obj.members),tmp.c_str());
     
     void* thefunc = NULL;
@@ -158,9 +169,8 @@ ZObject LIB_CALL(ZObject* args,int32_t n)
 
         if(!fn)
           return Z_Err(NameError,"Unable to load function from library!");
-        KlassObj_setMember(&obj,tmp.c_str(),ZObjFromPtr(fn));
         ZObject z = ZObjFromStr(tmp.c_str());
-        KlassObj_setMember(&obj, (const char*)z.ptr, ZObjFromPtr(fn));
+        KlassObj_setMember(&obj, AS_STR(z)->val, ZObjFromPtr(fn));
         vm_markImportant(z.ptr);
         thefunc = fn;
     }
@@ -179,8 +189,11 @@ ZObject LIB_CALL(ZObject* args,int32_t n)
     if(l!=0)
       values = new void*[l];
     size_t j = 3;
-    vector<void*> ptrs;
+
     char buffer[512];
+    size_t k = 0;
+    uint8_t* buffer1 = new uint8_t[l*8];
+
     for(size_t i=0;i<l;i++)
     {
       ffiargs[i] = ffi_types[argTypes.arr[i+1].i];
@@ -196,14 +209,46 @@ ZObject LIB_CALL(ZObject* args,int32_t n)
             values[i] = (void*)&(args[j].i);
             break;
         }
+        case C_SHORT:
+        {
+            if(args[j].type != Z_INT)
+            {
+              snprintf(buffer,512,"Argument %zu is not an integer!",j);
+              return Z_Err(TypeError,buffer);
+            }
+            short tmp = (short)args[j].i;
+            memcpy(buffer1+k,&tmp,sizeof(short));
+            values[i] = (void*)(buffer+k);
+            k += sizeof(short);
+            break;
+        }
+        case C_LONG:
+        {
+            if(args[j].type != Z_INT)
+            {
+              snprintf(buffer,512,"Required int32 for C long. Argument %zu is not an integer!",j);
+              return Z_Err(TypeError,buffer);
+            }
+            if(sizeof(long) == 8)
+            {
+              long tmp = (long)args[j].i;
+              memcpy(buffer1+k,&tmp,sizeof(long));
+              values[i] = (void*)(buffer1+k);
+              k += sizeof(long);
+            }
+            else
+              values[i] = (void*)&(args[j].i);
+            break;
+        }
         case C_LLONG:
+        case C_SIZET:
         {
             if(args[j].type != Z_INT64)
             {
               snprintf(buffer,512,"Argument %zu is not an integer 64 bit!",j);
               return Z_Err(TypeError,buffer);
             }
-            values[i] = (void*)&(args[j].i);
+            values[i] = (void*)&(args[j].l);
             break;
         }
         case C_DOUBLE:
@@ -214,6 +259,45 @@ ZObject LIB_CALL(ZObject* args,int32_t n)
             return Z_Err(TypeError,buffer);
           }
           values[i] = (void*)&(args[j].f);
+          break;
+        }
+        case C_FLOAT:
+        {
+          if(args[j].type != Z_FLOAT)
+          {
+            snprintf(buffer,512,"Argument %zu is not a float!",j);
+            return Z_Err(TypeError,buffer);
+          }
+          float tmp = (float)args[j].f;
+          memcpy(buffer1+k,&tmp,sizeof(tmp));
+          values[i] = (void*)(buffer1+k);
+          k += sizeof(tmp);
+          break;
+        }
+        case C_CHAR:
+        {
+          if(args[j].type != Z_BYTE)
+          {
+            snprintf(buffer,512,"Argument %zu is not a byte!",j);
+            return Z_Err(TypeError,buffer);
+          }
+          char tmp = (char)args[j].i;
+          memcpy(buffer1+k,&tmp,sizeof(tmp));
+          values[i] = (void*)(buffer1+k);
+          k += sizeof(tmp);
+          break;
+        }
+        case C_BOOL:
+        {
+          if(args[j].type != Z_BOOL)
+          {
+            snprintf(buffer,512,"Argument %zu is not a boolean!",j);
+            return Z_Err(TypeError,buffer);
+          }
+          char tmp = (char)args[j].i;
+          memcpy(buffer1+k,&tmp,sizeof(tmp));
+          values[i] = (void*)(buffer1+k);
+          k += sizeof(tmp);
           break;
         }
         case C_PTR:
@@ -259,14 +343,15 @@ ZObject LIB_CALL(ZObject* args,int32_t n)
     ffi_call(&cif,FFI_FN(thefunc),(void*)retAddr[argTypes.arr[0].i],values);
     delete[] values;
     delete[] ffiargs;
+    delete[] buffer1;
     switch(argTypes.arr[0].i)
     {
       case C_CHAR:
-        return ZObjFromInt(iret);
+        return ZObjFromByte(cret);
       case C_SHORT:
-        return ZObjFromInt(iret);
+        return ZObjFromInt(sret);
       case C_BOOL:
-        return ZObjFromInt(iret);
+        return ZObjFromBool(bret);
       case C_INT:
         return ZObjFromInt(iret);
       case C_LLONG:
@@ -274,7 +359,11 @@ ZObject LIB_CALL(ZObject* args,int32_t n)
       case C_SIZET:
         return ZObjFromInt64(sztret);
       case C_LONG:
-        return ZObjFromInt64(i64ret);
+      {
+        if(sizeof(long) == 8)
+          return ZObjFromInt64(i64ret);
+        return ZObjFromInt(lret);
+      }
       case C_FLOAT:
         return ZObjFromDouble(fret);
       case C_DOUBLE:

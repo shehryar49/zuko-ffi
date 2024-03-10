@@ -17,3 +17,4 @@ println(lib.call("test_str",[ffi.C_STR]*2,"Nafees is gay") is "Nafees is gay") #
 # btw Nafees is gay 
 # the false printed above means strings are not pointing to same memory as expected
 
+
